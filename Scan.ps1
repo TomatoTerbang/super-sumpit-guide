@@ -105,10 +105,16 @@ function pscan {
     }
 }
 
-$filePath = "$env:TEMP\schedule.txt"
+$filePath1 = "$env:TEMP\schedule1.txt"
+$filePath2 = "$env:TEMP\schedule2.txt"
 
-if (!(Test-Path $filePath)) {
-    Write-Host "Please Prearare credentials for BF"
+if (!(Test-Path $filePath1)) {
+    Write-Host "Please Prepare credentials for BF"
+    exit
+}
+
+if (!(Test-Path $filePath2)) {
+    Write-Host "Please Prepare credentials for BF"
     exit
 }
 
